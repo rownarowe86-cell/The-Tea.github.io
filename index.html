@@ -1,26 +1,22 @@
 <!DOCTYPE html>
 <html>
 <body>
-import React, { useState, useEffect } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
-import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
-import { Coffee, Feather, BookOpen, Flame, Send, Info, Heart, MessageCircle, Leaf, ShieldCheck } from 'lucide-react';
-
-// --- Firebase Configuration & Initialization ---
+{ useState, useEffect } from 'react';
+{ initializeApp } from 'firebase/app';
+{ getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+{ getFirestore, collection, addDoc, onSnapshot, serverTimestamp } from 'firebase/firestore';
+{ Coffee, Feather, BookOpen, Flame, Send, Info, Heart, MessageCircle, Leaf, ShieldCheck } from 'lucide-react';
 const firebaseConfig = JSON.parse(__firebase_config);
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-
 // --- Main Application Component ---
 export default function App() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
   const [stories, setStories] = useState([]);
   const [loading, setLoading] = useState(true);
-  
   // Form State
   const [formData, setFormData] = useState({
     author: '',
