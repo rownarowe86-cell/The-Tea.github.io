@@ -74,21 +74,16 @@
       const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
       savedPosts.forEach(post => displayPost(post));
     };
-
     function addPost() {
       const input = document.getElementById("postInput");
       const text = input.value.trim();
-
       if (text === "") return;
-
       const savedPosts = JSON.parse(localStorage.getItem("posts")) || [];
       savedPosts.push(text);
       localStorage.setItem("posts", JSON.stringify(savedPosts));
-
       displayPost(text);
       input.value = "";
        }
-
     function displayPost(text) {
       const postDiv = document.createElement("div");
       postDiv.className = "post";
