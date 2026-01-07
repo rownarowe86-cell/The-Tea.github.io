@@ -5,222 +5,267 @@
   <title>The Tea ☕</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- Tailwind CDN -->
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- Firebase SDKs (Modular) -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    /* ---------------- Global State & Config ---------------- */
-    const firebaseConfig = JSON.parse(__firebase_config);
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'the-tea-app';
-    
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    let currentUser = null;
-
-    /* ---------------- DOM Elements ---------------- */
-    const teaForm = document.getElementById("teaForm");
-    const feed = document.getElementById("feed");
-    const messageDisplay = document.getElementById("messageDisplay");
-
-    /* ---------------- Authentication (Rule 3) ---------------- */
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (error) {
-        console.error("Auth failed:", error);
-      }
-    };
-
-    onAuthStateChanged(auth, (user) => {
-      if (user) {
-        currentUser = user;
-        startListening(); // Start fetching data only after auth
-      }
-    });
-
-    initAuth();
-
-    /* ---------------- Feed Listener (Rule 1 & 2) ---------------- */
-    function startListening() {
-      // Public collection path as per Rule 1
-      const teaCollection = collection(db, 'artifacts', appId, 'public', 'data', 'pours');
-      
-      // Simple query as per Rule 2 (no complex ordering in query to avoid index errors)
-      onSnapshot(teaCollection, (snapshot) => {
-        const posts = [];
-        snapshot.forEach((doc) => {
-          posts.push({ id: doc.id, ...doc.data() });
-        });
-
-        // Sort in memory (Rule 2)
-        posts.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-
-        renderFeed(posts);
-      }, (error) => {
-        console.error("Firestore error:", error);
-      });
-    }
-
-    function renderFeed(posts) {
-      feed.innerHTML = "";
-      if (posts.length === 0) {
-        feed.innerHTML = `<p class="text-stone-400 italic text-center py-10">No tea spilled yet. Be the first.</p>`;
-        return;
-      }
-
-      posts.forEach(post => {
-        const div = document.createElement("div");
-        div.className = "bg-stone-50 p-4 rounded-lg border border-stone-200 shadow-sm mb-4 animate-in fade-in duration-500";
-        div.innerHTML = `
-          <div class="text-xs text-stone-400 mb-1">
-            ${post.timestamp ? new Date(post.timestamp.seconds * 1000).toLocaleString() : 'Just now'}
-          </div>
-          <p class="text-stone-800 break-words leading-relaxed">${post.content}</p>
-        `;
-        feed.appendChild(div);
-      });
-    }
-
-    /* ---------------- Submit Logic ---------------- */
-    teaForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      
-      if (!currentUser) {
-        showMessage("Authenticating... please try again in a second.", "text-amber-600");
-        return;
-      }
-
-      const content = document.getElementById("content").value.trim();
-      if (!content) return;
-
-      try {
-        const teaCollection = collection(db, 'artifacts', appId, 'public', 'data', 'pours');
-        await addDoc(teaCollection, {
-          content: content,
-          userId: currentUser.uid,
-          timestamp: serverTimestamp()
-        });
-
-        teaForm.reset();
-        showMessage("Tea spilled successfully! ☕", "text-green-600");
-      } catch (error) {
-        console.error("Submission error:", error);
-        showMessage("Failed to spill. Try again.", "text-red-600");
-      }
-    });
-
-    function showMessage(msg, colorClass) {
-      messageDisplay.textContent = msg;
-      messageDisplay.className = `text-sm mt-2 transition-opacity duration-300 ${colorClass}`;
-      setTimeout(() => {
-        messageDisplay.style.opacity = '0';
-        setTimeout(() => { 
-          messageDisplay.textContent = ""; 
-          messageDisplay.style.opacity = '1';
-        }, 300);
-      }, 3000);
-    }
-  </script>
+  
+  <!-- Firebase SDKs - Using fixed versions and non-module script tags for better error isolation -->
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore-compat.js"></script>
 
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Inter:wght@300;400;600&display=swap');
+    
     body {
-      background-color: #fdfbf7;
-      font-family: 'Georgia', serif;
+      font-family: 'Inter', sans-serif;
+      background-color: #fcfaf7;
     }
+    
+    h1, h2, h3 {
+      font-family: 'Playfair Display', serif;
+    }
+
     .custom-scrollbar::-webkit-scrollbar {
       width: 4px;
     }
-    .custom-scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
     .custom-scrollbar::-webkit-scrollbar-thumb {
-      background: #d6d3d1;
+      background-color: #e5e7eb;
       border-radius: 10px;
+    }
+
+    /* Simple checkbox styling to match the theme */
+    input[type="checkbox"] {
+      accent-color: #444;
     }
   </style>
 </head>
-<body class="text-stone-800 flex flex-col h-screen overflow-hidden">
 
-  <!-- Fixed Header -->
-  <header class="bg-stone-900 text-white p-4 shadow-lg z-50 flex items-center justify-center gap-3">
-    <span class="text-2xl">🍃</span>
-    <h1 class="text-2xl font-bold tracking-widest uppercase">The Tea</h1>
+<body class="text-stone-900 min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-stone-950 text-white py-6 px-4 text-center border-b border-stone-800 shadow-lg">
+    <h1 class="text-4xl font-bold italic tracking-tighter">The Tea</h1>
+    <p class="text-stone-400 text-sm mt-1 uppercase tracking-widest">Est. 2024 • Strictly Off The Record</p>
   </header>
 
-  <!-- Main Grid Layout -->
-  <div class="flex flex-1 overflow-hidden">
+  <!-- Three Column Layout -->
+  <main class="flex-grow max-w-[1600px] mx-auto w-full p-4 md:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
     
-    <!-- Left Section: About (Sidebar) -->
-    <aside class="hidden lg:flex w-1/4 bg-stone-100 p-8 flex-col justify-start border-r border-stone-200 overflow-y-auto">
-      <h2 class="text-xl font-bold mb-6 border-b border-stone-300 pb-2 uppercase tracking-tighter">About The Tea</h2>
-      <p class="text-stone-700 leading-relaxed italic">
-        "The kettle is screaming, and so are the headlines you haven’t seen yet. Welcome to The Tea, the only corner of the internet where the whispers are louder than the shouts. We aren't just spilling the truth; we’re brewing the scandals that others try to bury in the dark. So, pull up a chair, check your conscience at the door, and lower your voice—because what we’re about to pour is piping hot, strictly off the record, and absolutely delicious."
-      </p>
-      <div class="mt-auto pt-8 text-stone-400 text-xs">
-        &copy; 2024 The Tea. All rights reserved.
-      </div>
-    </aside>
+    <!-- LEFT: About Section -->
+    <div class="lg:col-span-3">
+      <section class="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 sticky top-8">
+        <h2 class="text-xl font-bold mb-4 text-stone-900">About The Tea</h2>
+        <p class="text-stone-600 text-sm leading-relaxed italic">
+          "The kettle is screaming, and so are the headlines you haven’t seen yet. Welcome to The Tea, the only corner of the internet where the whispers are louder than the shouts. We aren't just spilling the truth; we’re brewing the scandals that others try to bury in the dark. So, pull up a chair, check your conscience at the door, and lower your voice—because what we’re about to pour is piping hot, strictly off the record, and absolutely delicious."
+        </p>
+      </section>
+    </div>
 
-    <!-- Center Section: Spill Area -->
-    <main class="flex-1 flex flex-col p-6 lg:p-12 items-center justify-center bg-white">
-      <div class="max-w-xl w-full">
-        <h2 class="text-2xl font-bold mb-2 text-center">Spill the Tea and release the negative energy.</h2>
-        <p class="text-stone-500 text-center mb-8">What happens here, stays here (mostly).</p>
+    <!-- CENTER: Spill the Tea Form -->
+    <div class="lg:col-span-4">
+      <section class="bg-stone-900 text-white p-6 rounded-2xl shadow-xl sticky top-8">
+        <h2 class="text-2xl font-bold mb-1">Spill the Tea</h2>
+        <p class="text-stone-400 mb-6 text-xs uppercase tracking-wider">Release the negative energy.</p>
 
-        <form id="teaForm" class="bg-stone-50 p-6 rounded-2xl shadow-inner border border-stone-100 relative">
+        <form id="teaForm" class="space-y-4">
           <textarea
             id="content"
             rows="6"
             placeholder="What's brewing?"
-            class="w-full bg-transparent border-none focus:ring-0 text-lg resize-none placeholder-stone-300"
+            class="w-full bg-stone-800 border-none text-white placeholder-stone-500 rounded-xl p-4 focus:ring-2 focus:ring-stone-500 outline-none transition-all resize-none"
             required
           ></textarea>
-          
-          <div class="flex items-center justify-between mt-4">
-            <div id="messageDisplay" class="text-sm"></div>
-            <button
-              type="submit"
-              class="bg-stone-800 text-white px-8 py-3 rounded-full hover:bg-black transition-colors font-bold shadow-md"
-            >
-              Publish
-            </button>
+
+          <!-- Content Use Agreement Section -->
+          <div class="bg-stone-800/50 p-4 rounded-xl border border-stone-700">
+            <h4 class="text-[10px] font-bold uppercase tracking-widest text-stone-400 mb-2">Content Use Agreement</h4>
+            <p class="text-[10px] text-stone-400 leading-tight mb-3 italic">
+              By submitting content, you grant us permission to use, display, and share this content in any format or medium. You affirm that you hold all necessary rights and that it does not infringe on any third-party rights.
+            </p>
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <input type="checkbox" id="agreementCheckbox" class="w-4 h-4 rounded border-stone-600 bg-stone-700 text-stone-200">
+              <span class="text-xs font-semibold text-stone-300 group-hover:text-white transition-colors">Agreed and Accepted</span>
+            </label>
           </div>
+
+          <button
+            type="submit"
+            id="submitBtn"
+            disabled
+            class="w-full bg-white text-stone-900 font-bold py-3 rounded-xl hover:bg-stone-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+          >
+            Pour the Secret
+          </button>
+          
+          <div id="statusMsg" class="text-center text-xs font-medium h-4"></div>
         </form>
+      </section>
+    </div>
+
+    <!-- RIGHT: Recent Pours Feed -->
+    <div class="lg:col-span-5">
+      <div class="flex items-center justify-between mb-4 px-2">
+        <h3 class="text-xl font-bold">Recent Pours</h3>
+        <span class="bg-stone-200 text-stone-600 text-[10px] px-2 py-1 rounded-full uppercase font-bold tracking-widest">Live Feed</span>
+      </div>
+      
+      <div id="feed" class="space-y-4 max-h-[calc(100vh-250px)] overflow-y-auto pr-2 custom-scrollbar">
+        <div id="loader" class="animate-pulse space-y-4">
+          <div class="h-24 bg-stone-100 rounded-xl border border-stone-200"></div>
+          <div class="h-24 bg-stone-100 rounded-xl border border-stone-200"></div>
+          <div class="h-24 bg-stone-100 rounded-xl border border-stone-200"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="p-6 text-center text-stone-400 text-[10px] border-t border-stone-200 bg-white mt-auto">
+    &copy; 2024 The Tea. All whispers are anonymous. Sip at your own risk.
+  </footer>
+
+  <script>
+    window.addEventListener('error', function(e) {
+      console.error('Captured Global Error:', e.message);
+    });
+
+    window.addEventListener('DOMContentLoaded', function() {
+      let firebaseConfig;
+      try {
+        if (typeof __firebase_config === 'undefined') throw new Error('Config missing');
+        firebaseConfig = JSON.parse(__firebase_config);
+      } catch (e) {
+        console.error("Firebase config issue:", e);
+        document.getElementById('statusMsg').innerText = "System maintenance required.";
+        return;
+      }
+
+      firebase.initializeApp(firebaseConfig);
+      const auth = firebase.auth();
+      const db = firebase.firestore();
+      const appId = typeof __app_id !== 'undefined' ? __app_id : 'the-tea-v5';
+
+      const teaForm = document.getElementById('teaForm');
+      const contentInput = document.getElementById('content');
+      const agreementCheckbox = document.getElementById('agreementCheckbox');
+      const feedContainer = document.getElementById('feed');
+      const statusMsg = document.getElementById('statusMsg');
+      const submitBtn = document.getElementById('submitBtn');
+
+      // Logic to toggle submit button based on checkbox
+      agreementCheckbox.addEventListener('change', function() {
+        submitBtn.disabled = !this.checked;
+      });
+
+      const handleSignIn = async () => {
+        try {
+          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+            await auth.signInWithCustomToken(__initial_auth_token);
+          } else {
+            await auth.signInAnonymously();
+          }
+        } catch (error) {
+          console.warn("Auth retry triggered:", error.message);
+        }
+      };
+
+      handleSignIn();
+
+      teaForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        <!-- Mobile About (Visible only on small screens) -->
-        <div class="lg:hidden mt-12 p-4 bg-stone-100 rounded-lg text-sm text-stone-600 italic">
-          <strong>About:</strong> The kettle is screaming... we’re brewing the scandals that others try to bury in the dark.
-        </div>
-      </div>
-    </main>
+        // Final validation guard
+        if (!agreementCheckbox.checked) {
+          statusMsg.innerText = "Please accept the agreement.";
+          return;
+        }
 
-    <!-- Right Section: Recent Pours -->
-    <section class="w-full md:w-1/3 lg:w-1/4 bg-stone-50 border-l border-stone-200 flex flex-col">
-      <div class="p-6 border-b border-stone-200 bg-white">
-        <h3 class="text-lg font-bold flex items-center gap-2">
-          <span>🔥</span> Recent Pours
-        </h3>
-      </div>
-      <div id="feed" class="flex-1 overflow-y-auto p-6 custom-scrollbar bg-[#fdfbf7]">
-        <!-- Pours injected here -->
-        <div class="flex justify-center py-10">
-          <div class="animate-pulse text-stone-400">Heating up the kettle...</div>
-        </div>
-      </div>
-    </section>
+        const user = auth.currentUser;
+        if (!user) {
+          statusMsg.innerText = "Reconnecting source...";
+          handleSignIn();
+          return;
+        }
 
-  </div>
+        const content = contentInput.value.trim();
+        if (!content) return;
 
+        submitBtn.disabled = true;
+        submitBtn.innerText = "Steeping...";
+
+        try {
+          const path = `/artifacts/${appId}/public/data/pours`;
+          await db.collection(path).add({
+            content: content,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
+            userId: user.uid,
+            agreedToTerms: true
+          });
+
+          contentInput.value = "";
+          agreementCheckbox.checked = false;
+          submitBtn.disabled = true;
+          
+          statusMsg.innerText = "Tea spilled. ☕";
+          statusMsg.className = "text-center text-xs font-medium text-green-500";
+          setTimeout(() => statusMsg.innerText = "", 3000);
+        } catch (error) {
+          console.error("Submit Error:", error);
+          statusMsg.innerText = "Transmission failed.";
+          statusMsg.className = "text-center text-xs font-medium text-red-400";
+          submitBtn.disabled = false;
+        } finally {
+          submitBtn.innerText = "Pour the Secret";
+        }
+      });
+
+      auth.onAuthStateChanged((user) => {
+        if (!user) return;
+
+        const path = `/artifacts/${appId}/public/data/pours`;
+        db.collection(path).onSnapshot((snapshot) => {
+          const docs = [];
+          snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
+          
+          docs.sort((a, b) => {
+            const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
+            const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
+            return timeB - timeA;
+          });
+          
+          renderFeed(docs);
+        }, (err) => {
+          console.error("Stream Error:", err);
+        });
+      });
+
+      function renderFeed(pours) {
+        if (pours.length === 0) {
+          feedContainer.innerHTML = `<p class="text-stone-400 text-sm italic p-4">Silence is heavy here.</p>`;
+          return;
+        }
+        
+        feedContainer.innerHTML = pours.map(pour => {
+          let dateStr = 'Just now';
+          if (pour.timestamp) {
+            const date = pour.timestamp.toDate ? pour.timestamp.toDate() : new Date();
+            dateStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+          }
+          
+          const cleanContent = (pour.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+          
+          return `
+            <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100 hover:border-stone-300 transition-all">
+              <div class="flex justify-between items-start mb-2">
+                <span class="text-[9px] uppercase tracking-widest text-stone-400 font-bold italic">Anonymous • ${dateStr}</span>
+                <div class="h-1.5 w-1.5 rounded-full bg-stone-200"></div>
+              </div>
+              <p class="text-stone-800 text-sm leading-relaxed">${cleanContent}</p>
+            </div>
+          `;
+        }).join('');
+      }
+    });
+  </script>
 </body>
 </html>
