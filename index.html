@@ -92,7 +92,7 @@
             type="submit"
             id="submitBtn"
             enabled
-            class="w-full bg-white text-stone-900 font-bold py-3 rounded-xl hover:bg-stone-200 disabled:opacity-30 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+            class="w-full bg-white text-stone-900 font-bold py-3 rounded-xl hover:bg-stone-200 enabled:opacity-30 enabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
           >
             Pour the Secret
           </button>
@@ -123,138 +123,7 @@
   <footer class="p-6 text-center text-stone-400 text-[10px] border-t border-stone-200 bg-white mt-auto">
     &copy; 2024 The Tea. All whispers are anonymous. Sip at your own risk.
   </footer>
-
-  <script>
-    window.addEventListener('error', function(e) {
-      console.error('Captured Global Error:', e.message);
-    });
-
-    window.addEventListener('DOMContentLoaded', function() {
-      let firebaseConfig;
-      try {
-        if (typeof __firebase_config === 'undefined') throw new Error('Config missing');
-        firebaseConfig = JSON.parse(__firebase_config);
-      } catch (e) {
-        console.error("Firebase config issue:", e);
-        document.getElementById('statusMsg').innerText = "System maintenance required.";
-        return;
-      }
-
-      firebase.initializeApp(firebaseConfig);
-      const auth = firebase.auth();
-      const db = firebase.firestore();
-      const appId = typeof __app_id !== 'undefined' ? __app_id : 'the-tea-v5';
-
-      const teaForm = document.getElementById('teaForm');
-      const contentInput = document.getElementById('content');
-      const agreementCheckbox = document.getElementById('agreementCheckbox');
-      const feedContainer = document.getElementById('feed');
-      const statusMsg = document.getElementById('statusMsg');
-      const submitBtn = document.getElementById('submitBtn');
-
-      // Logic to toggle submit button based on checkbox
-      agreementCheckbox.addEventListener('change', function() {
-        submitBtn.disabled = !this.checked;
-      });
-
-      const handleSignIn = async () => {
-        try {
-          if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-            await auth.signInWithCustomToken(__initial_auth_token);
-          } else {
-            await auth.signInAnonymously();
-          }
-        } catch (error) {
-          console.warn("Auth retry triggered:", error.message);
-        }
-      };
-
-      handleSignIn();
-
-      teaForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        
-        // Final validation guard
-        if (!agreementCheckbox.checked) {
-          statusMsg.innerText = "Please accept the agreement.";
-          return;
-        }
-
-        const user = auth.currentUser;
-        if (!user) {
-          statusMsg.innerText = "Reconnecting source...";
-          handleSignIn();
-          return;
-        }
-
-        const content = contentInput.value.trim();
-        if (!content) return;
-
-        submitBtn.disabled = true;
-        submitBtn.innerText = "Steeping...";
-
-        try {
-          const path = `/artifacts/${appId}/public/data/pours`;
-          await db.collection(path).add({
-            content: content,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-            userId: user.uid,
-            agreedToTerms: true
-          });
-
-          contentInput.value = "";
-          agreementCheckbox.checked = false;
-          submitBtn.disabled = true;
-          
-          statusMsg.innerText = "Tea spilled. ☕";
-          statusMsg.className = "text-center text-xs font-medium text-green-500";
-          setTimeout(() => statusMsg.innerText = "", 3000);
-        } catch (error) {
-          console.error("Submit Error:", error);
-          statusMsg.innerText = "Transmission failed.";
-          statusMsg.className = "text-center text-xs font-medium text-red-400";
-          submitBtn.disabled = false;
-        } finally {
-          submitBtn.innerText = "Pour the Secret";
-        }
-      });
-
-      auth.onAuthStateChanged((user) => {
-        if (!user) return;
-
-        const path = `/artifacts/${appId}/public/data/pours`;
-        db.collection(path).onSnapshot((snapshot) => {
-          const docs = [];
-          snapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() }));
-          
-          docs.sort((a, b) => {
-            const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : 0;
-            const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : 0;
-            return timeB - timeA;
-          });
-          
-          renderFeed(docs);
-        }, (err) => {
-          console.error("Stream Error:", err);
-        });
-      });
-
-      function renderFeed(pours) {
-        if (pours.length === 0) {
-          feedContainer.innerHTML = `<p class="text-stone-400 text-sm italic p-4">Silence is heavy here.</p>`;
-          return;
-        }
-        
-        feedContainer.innerHTML = pours.map(pour => {
-          let dateStr = 'Just now';
-          if (pour.timestamp) {
-            const date = pour.timestamp.toDate ? pour.timestamp.toDate() : new Date();
-            dateStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-          }
-          
-          const cleanContent = (pour.content || "").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-          
-          return `
+ 
             <div class="bg-white p-5 rounded-xl shadow-sm border border-stone-100 hover:border-stone-300 transition-all">
               <div class="flex justify-between items-start mb-2">
                 <span class="text-[9px] uppercase tracking-widest text-stone-400 font-bold italic">Anonymous • ${dateStr}</span>
